@@ -28,3 +28,48 @@ run1:
   parameters:
     c: 1.0
 ```
+
+## Multiple MPI runs simultaneously
+```yaml
+driver:
+    rundir: "%(basedir)/%(thread)"
+    templatedir: "%(basedir)/template"
+    executable: "a.exe"
+    templatefile: "%(templatedir)/input_template"
+    paramfile: "%(rundir)/input"
+    execcommand: "mpirun -np 2 %(executable) > runlog"
+
+usedef:
+  basedir: "/tmp/mybasedir"
+
+run1:
+  variableorder: [a,b]
+  variables:
+    b: [1,2]
+    a: [4,5]
+  parameters:
+    c: 1.0
+```
+
+## Multiple MPI runs simultaneously with parameter-based run directories
+and custom formatting
+```yaml
+driver:
+    rundir: "%(basedir)/vara_%(a:%02d)_varb_%(b:%4e)"
+    templatedir: "%(basedir)/template"
+    executable: "a.exe"
+    templatefile: "%(templatedir)/input_template"
+    paramfile: "%(rundir)/input"
+    execcommand: "mpirun -np 2 %(executable) > runlog"
+
+usedef:
+  basedir: "/tmp/mybasedir"
+
+run1:
+  variableorder: [a,b]
+  variables:
+    b: [1,2]
+    a: [1.569,3.14]
+  parameters:
+    c: "superbee"
+```
