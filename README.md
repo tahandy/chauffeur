@@ -81,7 +81,7 @@ driver:
     executable: "a.exe"
     templatefile: "%(templatedir)/input_template_%(c)"
     paramfile: "%(rundir)/input"
-    execcommand: "mpirun -np 2 %(executable) > runlog"
+    execcommand: "mpirun -np %(nproc:%d) %(executable) > runlog"
 
 userdef:
   basedir: "/tmp/mybasedir"
@@ -93,6 +93,7 @@ run1:
     a: [1.569,3.14]
   parameters:
     c: "superbee"
+    nproc: 7
 
 run2:
   variableorder: [a,b]
@@ -101,4 +102,5 @@ run2:
     a: [0.5, 0.75, 1.0, 2.221]
   parameters:
     c: "minmod"
+    nproc: 24
 ```
