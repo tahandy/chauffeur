@@ -10,6 +10,16 @@ You need to perform multiple computational simulations covering a parameter spac
 - Python 3.4+
 - [PyYAML](http://pyyaml.org/)
 
+# Usage
+```
+chauffeur.py [-h] [-i INPUT]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i INPUT, --input INPUT
+                        specify input YAML file
+```
+
 # Examples
 
 ## Parameter file
