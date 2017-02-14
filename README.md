@@ -14,10 +14,15 @@ You need to perform multiple computational simulations covering a parameter spac
 
 ## Parameter file
 > ... static input ...
+
 > thisisvarA = %(a)
+
 > thisisvarB = %(b)
+
 > thisisparamC = %(c)
+
 > ... static input ...
+
 
 ## Multiple sequential runs in one directory
 ```yaml
