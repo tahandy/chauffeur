@@ -12,6 +12,13 @@ You need to perform multiple computational simulations covering a parameter spac
 
 # Examples
 
+## Parameter file
+> ... static input ...
+> thisisvarA = %(a)
+> thisisvarB = %(b)
+> thisisparamC = %(c)
+> ... static input ...
+
 ## Multiple sequential runs in one directory
 ```yaml
 driver:
@@ -51,18 +58,17 @@ run1:
     c: 1.0
 ```
 
-## Multiple MPI runs simultaneously with parameter-based run directories
-and custom formatting
+## Multiple MPI runs simultaneously with parameter-based run directories and custom formatting
 ```yaml
 driver:
     rundir: "%(basedir)/vara_%(a:%02d)_varb_%(b:%4e)"
     templatedir: "%(basedir)/template"
     executable: "a.exe"
-    templatefile: "%(templatedir)/input_template"
+    templatefile: "%(templatedir)/input_template_%(c)"
     paramfile: "%(rundir)/input"
     execcommand: "mpirun -np 2 %(executable) > runlog"
 
-usedef:
+userdef:
   basedir: "/tmp/mybasedir"
 
 run1:
