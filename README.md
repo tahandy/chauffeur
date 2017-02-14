@@ -83,4 +83,12 @@ run1:
     a: [1.569,3.14]
   parameters:
     c: "superbee"
+
+run2:
+  variableorder: [a,b]
+  variables:
+    b: [1,2,3,4]
+    a: [0.5, 0.75, 1.0, 2.221]
+  parameters:
+    c: "minmod"
 ```
