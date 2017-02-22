@@ -378,8 +378,8 @@ def worker():
 			# Perform postprocessing commands
 			if(driverData['precommand'] is not None):
 				precommand = interpolateString(driverData['precommand'],data)
-				cmdStr = 'cd %s; %s'%(workDir,interpolateString(execcommand))
-				logInfo('Executing pre command: {}'.format(execcommand))
+				cmdStr = 'cd %s; %s'%(workDir,interpolateString(precommand))
+				logInfo('Executing pre command: {}'.format(precommand))
 				proc = subprocess.Popen(cmdStr, shell=True)
 				proc.wait()
 
