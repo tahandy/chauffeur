@@ -35,6 +35,8 @@ from collections import OrderedDict
 import logging
 import argparse
 
+from math import sqrt, pow
+
 # Global configuration options
 driverData = dict()
 userData   = dict()
@@ -133,10 +135,10 @@ def initDriverData(cfg):
 	driverData['postcommand']   = None
 
 	# Type formats
-	driverData['intFmtLong']   = '%d'
-	driverData['fltFmtLong']   = '%12.7e'
-	driverData['intFmtShort']  = '%05d'
-	driverData['fltFmtShort']  = '%f'
+	driverData['intFmtLong']   = 'd'
+	driverData['fltFmtLong']   = '12.7e'
+	driverData['intFmtShort']  = '05d'
+	driverData['fltFmtShort']  = 'f'
 
 	# Load user-defined values
 	cfgKey = 'driver'
@@ -236,12 +238,17 @@ def generateProduct(dicts,order):
 def interpolateString(inStr, inputData=None, inputFmt=None, nCalls=0):
 	"""Given an input string, replace all parameters and return the resolved string"""
 
+	# logInfo('[interpolateString] inStr: %s    nCalls: %d    type:%s'%(inStr,nCalls,type(inStr)))
+
 	MAX_RECURS = 10
 	begStr = '%('
 	endStr = ')'
 
 	if(inStr is None):
 		return None
+
+	if(not isinstance(inStr,str)):
+		return inStr
 
 	outStr = inStr
 
@@ -305,18 +312,24 @@ def interpolateString(inStr, inputData=None, inputFmt=None, nCalls=0):
 		if(inputData is not None):
 			if(subStr in inputData.keys()):
 				resolvedValue = inputData[subStr]
-				if(inlineFmt is not None):
-					resolvedValue = inlineFmt%resolvedValue
-				elif(inputFmt is not None and type(resolvedValue) in inputFmt.keys()):
-					resolvedValue = inputFmt[type(resolvedValue)]%resolvedValue
-				else:
-					resolvedValue = '{}'.format(resolvedValue)
-
 		if(resolvedValue is None):
 			abort('Unable to fully resolve "{}"'.format(begStr+subStr+endStr))
 
 		# Recurse if the resolution results in another parameter
 		resolvedValue = interpolateString(resolvedValue, inputData, inputFmt, nCalls+1)
+
+		# If the result is an evaluatable expression (encased by ` characters),
+		# perform the evaluation call. Evaluate string is, itself, recursive.
+		resolvedValue = evaluateStr(resolvedValue)
+
+
+		if(inlineFmt is not None):
+			resolvedValue = ('{:'+inlineFmt+'}').format(resolvedValue)
+		elif(inputFmt is not None and type(resolvedValue) in inputFmt.keys()):
+			resolvedValue = ('{:'+inputFmt[type(resolvedValue)]+'}').format(resolvedValue)
+		else:
+			resolvedValue = '{}'.format(resolvedValue)
+
 
 		# Update the string with the resolved value and prepare to find next
 		# parameter
@@ -324,7 +337,46 @@ def interpolateString(inStr, inputData=None, inputFmt=None, nCalls=0):
 
 		countBeg = indEnd+1
 
+
+	# Once we have performed all replacements, we will find all possible
+	# evaluatable statements
+	# Start by getting the indices of all ` characters in the output string
+	# logInfo('[interpolateString] (pre-eval) outStr: %s'%outStr)
+
+
+	# if(nCalls==0 and '`' in outStr):
+	# outStr = evaluateStr(outStr)
+
+
+	# Final return!
 	return outStr
+
+def evaluateStr(inStr):
+	if(not isinstance(inStr,str)):
+		return inStr
+
+	inds = [i for i, char in enumerate(inStr) if char == '`']
+	N = len(inds)
+
+	if(N==0):
+		return inStr
+
+	if(N%2 != 0):
+		abort('Odd number of evaluator characters (`) found in {:s}'.format(inStr))
+
+	outStr = inStr
+	N=N/2
+	if(N==1):
+		outStr = eval(inStr[1:-1])
+	else:
+		subStr   = inStr[inds[0]+1:inds[-1]-1]
+		evaldStr = evaluateStr(subStr)
+		# outStr   = outStr.replace(subStr,evaldStr)
+		outStr   = evaldStr
+
+	return outStr
+
+
 
 
 #============================================
@@ -343,6 +395,14 @@ def worker():
 
 		# Copy template to working directory
 		workDir = resolveAbsPath(interpolateString(driverData['rundir'],data))
+
+		# If the workDir exists, skip this run
+		#if(os.path.exists(workDir)):
+		#	logInfo('Work directory {:s} exists. Skipping this run.'.format(workDir))
+		#	continue
+
+
+
 		templateDir = driverData['templatedir']
 		if(templateDir is not None):
 			logInfo('Copying %s to %s'%(templateDir,workDir))
@@ -374,6 +434,9 @@ def worker():
 			logInfo('Writing param file {}'.format(paramOutputFile))
 			with open(paramOutputFile,'w+') as pfile:
 				pfile.write(paramStr)
+
+			if(driverData['type']=='param_only'):
+				continue
 
 			# Perform postprocessing commands
 			if(driverData['precommand'] is not None):
@@ -447,6 +510,7 @@ if(__name__ == "__main__"):
 
 	runqueue = queue.Queue()
 	for r in runs:
+		logInfo('Adding run info {}'.format(r))
 		runqueue.put(r)
 
 	threads = [ threading.Thread(target=worker, name='{:02d}'.format(_i)) for _i in range(driverData['nthreads']) ]
