@@ -127,11 +127,10 @@ def initDriverData(cfg):
 	driverData['scriptdir']     = os.path.realpath(__file__)
 	driverData['executable']    = None
 	driverData['rundir']        = None
-	driverData['templatefile']  = None
-	driverData['paramfile']     = None
 	driverData['templatedir']   = None
 	driverData['type']          = 'exec'
 	driverData['dryrun']        = True
+	driverData['skipifexist']   = True
 	driverData['nthreads']       = 1
 
 	driverData['precommand']    = None
@@ -495,9 +494,9 @@ def worker():
 		workDir = resolveAbsPath(interpolateString(driverData['rundir'],data))
 
 		# If the workDir exists, skip this run
-		#if(os.path.exists(workDir)):
-		#	logInfo('Work directory {:s} exists. Skipping this run.'.format(workDir))
-		#	continue
+		if(driverData['skipifexist'] and os.path.exists(workDir)):
+			logInfo('Work directory {:s} exists. Skipping this run.'.format(workDir))
+			continue
 
 
 
