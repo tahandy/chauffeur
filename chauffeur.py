@@ -41,6 +41,7 @@ from math import sqrt, pow
 driverData = dict()
 userData   = dict()
 runData    = OrderedDict()
+fileData   = OrderedDict()
 fmtShort   = dict()
 fmtLong    = dict()
 
@@ -212,6 +213,41 @@ def initRunData(cfg):
 
 		# Store run data
 		runData[key.lower()] = rdata
+
+
+#============================================
+# initFileData: Initialize relevant data about
+# files that need to be processed.
+#============================================
+def initFileData(cfg):
+	"""Extract 'file' parameters from the YAML configuration"""
+
+	# Extract all top-level keys containing 'run'
+	keyList = [key for key in cfg if 'file' in key.lower()]
+	if(not keyList):
+		abort('No file sections declared!')
+
+	# Sort the list
+	keyList = sorted(keyList)
+
+	# Read in the individual file data
+	for key in keyList:
+
+		# Set defaults
+		rdata = dict()
+		rdata['input']  = None
+		rdata['output'] = None
+		rdata['type']   = None
+
+		cdata = cfg[key]
+
+		for k in cdata.keys():
+			if(k.lower() not in rdata.keys()):
+				abort('File key "'+k+'" not accepted. Options are: '+', '.join(rdata.keys()))
+			rdata[k.lower()] = cdata[k]
+
+		# Store file data
+		fileData[key.lower()] = rdata
 
 #============================================
 # generateProduct: Compute the cartesian product of
