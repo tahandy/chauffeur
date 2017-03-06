@@ -45,6 +45,9 @@ fileData   = OrderedDict()
 fmtShort   = dict()
 fmtLong    = dict()
 
+pbsRundirs = []
+pbsFiles   = []
+
 wetRun = True
 
 # Create logger and setup to go to stdout. This allows us
@@ -134,6 +137,10 @@ def initDriverData(cfg):
 	driverData['precommand']    = None
 	driverData['execcommand']   = None
 	driverData['postcommand']   = None
+
+	# PBS stuff
+	driverData['pbs_submitscript'] = '%(cwd)/pbs_submit.sh'
+	driverData['pbs_subcommand']   = 'qsub'
 
 	# Type formats
 	driverData['intFmtLong']   = 'd'
@@ -238,6 +245,7 @@ def initFileData(cfg):
 		rdata['input']  = None
 		rdata['output'] = None
 		rdata['type']   = None
+		rdata['parameters']   = None
 
 		cdata = cfg[key]
 
@@ -338,16 +346,16 @@ def interpolateString(inStr, inputData=None, inputFmt=None, nCalls=0):
 		resolvedValue = None
 		usedInput = False
 		tmpFmt = None
-		if(subStr in driverData.keys()):
-			resolvedValue = driverData[subStr]
-		if(subStr in userData.keys()):
-			resolvedValue = userData[subStr]
 		if(threadInfo is not None):
 			if(subStr in threadInfo.keys()):
 				resolvedValue = threadInfo[subStr]
 		if(inputData is not None):
 			if(subStr in inputData.keys()):
 				resolvedValue = inputData[subStr]
+		if(subStr in userData.keys()):
+			resolvedValue = userData[subStr]
+		if(subStr in driverData.keys()):
+			resolvedValue = driverData[subStr]
 		if(resolvedValue is None):
 			abort('Unable to fully resolve "{}"'.format(begStr+subStr+endStr))
 
@@ -373,20 +381,13 @@ def interpolateString(inStr, inputData=None, inputFmt=None, nCalls=0):
 
 		countBeg = indEnd+1
 
-
-	# Once we have performed all replacements, we will find all possible
-	# evaluatable statements
-	# Start by getting the indices of all ` characters in the output string
-	# logInfo('[interpolateString] (pre-eval) outStr: %s'%outStr)
-
-
-	# if(nCalls==0 and '`' in outStr):
-	# outStr = evaluateStr(outStr)
-
-
 	# Final return!
 	return outStr
 
+#============================================
+# evaluateStr: Recursively evaluate embedded
+# expressions in the provided string
+#============================================
 def evaluateStr(inStr):
 	if(not isinstance(inStr,str)):
 		return inStr
@@ -412,7 +413,68 @@ def evaluateStr(inStr):
 
 	return outStr
 
+#============================================
+# processFiles: Process all defined files.
+# Helper wrapper for processSingleFile
+#============================================
+def processFiles(instanceData):
+	if(not fileData):
+		return
 
+	for fileKey in fileData.keys():
+		processSingleFile(fileKey,instanceData)
+
+
+#============================================
+# processSingleFile: Process a single file
+# with global and instance parameters
+#============================================
+def processSingleFile(fileKey,instanceData):
+	if(fileKey not in fileData.keys()):
+		abort('Attempting to process nonexistent file with key '+fileKey)
+
+	# Merge instance data (from specific run instance) and the file's parameters
+	data = instanceData
+	if('parameters' in fileData[fileKey].keys()):
+		data = {**data,**fileData[fileKey]['parameters']}
+
+
+	# Load parameter template
+	templatefile = resolveAbsPath(interpolateString(fileData[fileKey]['input'],data))
+	logInfo('Loading template file {}'.format(templatefile))
+	if(templatefile is None):
+		abort('Parameter template file is None!')
+
+	with open(templatefile,'r') as pfile:
+		paramStr = pfile.read()
+
+	# Replace all parameterizations with driver, user, and instance data
+	paramStr = interpolateString(paramStr, data, fmtLong)
+
+	# Write parameter file
+	outputFile = resolveAbsPath(interpolateString(fileData[fileKey]['output'],data))
+	logInfo('Writing param file {}'.format(outputFile))
+	with open(outputFile,'w+') as pfile:
+		pfile.write(paramStr)
+
+	# If the file is of type "pbs", record its output name
+	if(fileData[fileKey]['type'] == 'pbs'):
+		logInfo('adding to pbs files: {:s}'.format(outputFile))
+		pbsFiles.append(outputFile)
+
+def constructPbsSubmitScript():
+	if(not pbsFiles):
+		return
+
+	header = "#!/bin/bash"
+	subscript = interpolateString(driverData['pbs_submitscript'])
+	logInfo('Creating PBS submission script: {:s}'.format(subscript))
+	with open(subscript,'w+') as output:
+		output.write(header)
+		output.write('\n')
+		for f in pbsFiles:
+			path, file = os.path.split(f)
+			output.write('cd {:s} && {:s} {:s} && cd -\n'.format(path,driverData['pbs_subcommand'],file))
 
 
 #============================================
@@ -453,25 +515,10 @@ def worker():
 				path = Path(workDir)
 				path.mkdir(parents=True)
 
-			# Load parameter template
-			paramTemplateFile = resolveAbsPath(interpolateString(driverData['templatefile'],data))
-			logInfo('Loading template file {}'.format(paramTemplateFile))
-			if(paramTemplateFile is None):
-				abort('Parameter template file is None!')
+			# Process files
+			processFiles(data)
 
-			with open(paramTemplateFile,'r') as pfile:
-				paramStr = pfile.read()
-
-			# Replace all parameterizations with driver, user, and instance data
-			paramStr = interpolateString(paramStr, data, fmtLong)
-
-			# Write parameter file
-			paramOutputFile = resolveAbsPath(interpolateString(driverData['paramfile'],data))
-			logInfo('Writing param file {}'.format(paramOutputFile))
-			with open(paramOutputFile,'w+') as pfile:
-				pfile.write(paramStr)
-
-			if(driverData['type']=='param_only'):
+			if(driverData['type'] in ['param_only','setup']):
 				continue
 
 			# Perform postprocessing commands
@@ -528,6 +575,8 @@ if(__name__ == "__main__"):
 		initDriverData(cfg)
 		# Initialize user configuration
 		initUserData(cfg)
+		# Initialize file configurations
+		initFileData(cfg)
 		# Initialize run configurations
 		initRunData(cfg)
 
@@ -567,3 +616,6 @@ if(__name__ == "__main__"):
 
 		if(not allAlive):
 			break
+
+	# Construct PBS submission script
+	constructPbsSubmitScript()

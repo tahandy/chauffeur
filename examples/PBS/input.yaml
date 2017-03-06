@@ -1,0 +1,32 @@
+driver:
+  rundir: "%(cwd)/rundirs/a%(a)"
+  execcommand: "mpirun -np %(nproc) ./test.exe >> runlog"
+  precommand: "echo \"Before exec\""
+  postcommand: "./PostProc.pl -n %(nproc)"
+  type: setup
+  
+file_param:
+  input: "PARAM.in_template"
+  output: "%(rundir)/PARAM.in"
+  parameters:
+    fileid: "file_param"
+
+file_pbs:
+  input: "run.sh_template"
+  output: "%(rundir)/run.sh"
+  type: "pbs"
+  parameters:
+    fileid: "file_pbs"
+
+userdef:
+  nproc: "`%(nodes)*%(ppn)`"
+
+run:
+  variables:
+    a: [1,2,3]
+  parameters:
+    runname: "pbs_a%(a)"
+    nodes: 6
+    ppn: 20
+    walltime: "8:00:00"
+    

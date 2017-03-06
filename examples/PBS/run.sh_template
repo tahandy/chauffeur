@@ -1,0 +1,18 @@
+#!/bin/sh
+
+#PBS -V
+#PBS -m abe
+#PBS -N %(runname)
+#PBS -A crash_flux
+#PBS -q flux
+#PBS -l qos=flux
+#PBS -l nodes=%(nodes):ppn=%(ppn),qos=flux
+#PBS -l walltime=%(walltime)
+
+
+# cd to job submission directory
+cd $PBS_O_WORKDIR
+
+%(precommand)
+%(execcommand)
+%(postcommand)
