@@ -132,7 +132,7 @@ def initDriverData(cfg):
 	driverData['dryrun']        = True
 	driverData['skipifexist']   = True
 	driverData['nthreads']       = 1
-
+	
 	driverData['precommand']    = None
 	driverData['execcommand']   = None
 	driverData['postcommand']   = None
@@ -434,7 +434,7 @@ def processSingleFile(fileKey,instanceData):
 
 	# Merge instance data (from specific run instance) and the file's parameters
 	data = instanceData
-	if('parameters' in fileData[fileKey].keys()):
+	if('parameters' in fileData[fileKey].keys() and fileData[fileKey]['parameters']):
 		data = {**data,**fileData[fileKey]['parameters']}
 
 
@@ -499,8 +499,7 @@ def worker():
 			continue
 
 
-
-		templateDir = driverData['templatedir']
+		templateDir = resolveAbsPath(interpolateString(driverData['templatedir'],data))
 		if(templateDir is not None):
 			logInfo('Copying %s to %s'%(templateDir,workDir))
 			if(wetRun):
@@ -576,6 +575,7 @@ if(__name__ == "__main__"):
 		initUserData(cfg)
 		# Initialize file configurations
 		initFileData(cfg)
+		print('fileData: ',fileData)
 		# Initialize run configurations
 		initRunData(cfg)
 
