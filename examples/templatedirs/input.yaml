@@ -1,0 +1,25 @@
+driver:
+  rundir: "%(cwd)/rundirs/a%(a:03d)_%(s)_%(runid)"
+  execcommand: "python3 simulate_simulator.py >> runlog"
+  templatedir: "%(cwd)/template"
+  nthreads: 4
+  
+file_param:
+  input: "%(rundir)/input.par_template"
+  output: "%(rundir)/input.par"
+  parameters:
+    fileid: "file_param"
+
+run_1:
+  variables:
+    a: [1,2,3,4,5,6,7]
+    s: ["var1","var2"]
+  parameters:
+    runid: "run1"    
+
+run_2:
+  variables:
+    a: [8,9,10]
+    s: "var3"
+  parameters:
+    runid: "run2"    

@@ -1,0 +1,11 @@
+driver:
+  execcommand: "echo %(num) %(times10) %(squared)"
+
+userdef: 
+  times10: "`%(num)*10`"
+
+run:
+  variables:
+    num: [1,2,3,10,11,37,72]
+  parameters:
+    squared: "`pow(%(num),2)`"

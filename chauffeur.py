@@ -126,13 +126,13 @@ def initDriverData(cfg):
 	driverData['cwd']           = os.getcwd()
 	driverData['scriptdir']     = os.path.realpath(__file__)
 	driverData['executable']    = None
-	driverData['rundir']        = None
+	driverData['rundir']        = '%(cwd)'
 	driverData['templatedir']   = None
 	driverData['type']          = 'exec'
 	driverData['dryrun']        = True
 	driverData['skipifexist']   = True
 	driverData['nthreads']       = 1
-	
+
 	driverData['precommand']    = None
 	driverData['execcommand']   = None
 	driverData['postcommand']   = None
@@ -231,7 +231,8 @@ def initFileData(cfg):
 	# Extract all top-level keys containing 'run'
 	keyList = [key for key in cfg if 'file' in key.lower()]
 	if(not keyList):
-		abort('No file sections declared!')
+		# abort('No file sections declared!')
+		return
 
 	# Sort the list
 	keyList = sorted(keyList)
@@ -494,7 +495,7 @@ def worker():
 		workDir = resolveAbsPath(interpolateString(driverData['rundir'],data))
 
 		# If the workDir exists, skip this run
-		if(driverData['skipifexist'] and os.path.exists(workDir)):
+		if(driverData['skipifexist'] and driverData['templatedir'] and os.path.exists(workDir)):
 			logInfo('Work directory {:s} exists. Skipping this run.'.format(workDir))
 			continue
 
@@ -522,18 +523,15 @@ def worker():
 			# Perform postprocessing commands
 			if(driverData['precommand'] is not None):
 				precommand = interpolateString(driverData['precommand'],data)
-				cmdStr = 'cd %s; %s'%(workDir,interpolateString(precommand))
+				cmdStr = 'cd %s && %s'%(workDir,interpolateString(precommand))
 				logInfo('Executing pre command: {}'.format(precommand))
 				proc = subprocess.Popen(cmdStr, shell=True)
 				proc.wait()
 
 			# Run executable in working directory
-			if(driverData['executable'] is None):
-				abort('No executable set in input file')
-
 			if(driverData['execcommand'] is not None):
 				execcommand = interpolateString(driverData['execcommand'],data)
-				cmdStr = 'cd %s; %s'%(workDir,interpolateString(execcommand))
+				cmdStr = 'cd %s && %s'%(workDir,interpolateString(execcommand))
 				logInfo('Executing exec command: {}'.format(execcommand))
 				proc = subprocess.Popen(cmdStr, shell=True)
 				proc.wait()
@@ -541,7 +539,7 @@ def worker():
 			# Perform postprocessing commands
 			if(driverData['postcommand'] is not None):
 				postcommand = interpolateString(driverData['postcommand'],data)
-				cmdStr = 'cd %s; %s'%(workDir,postcommand)
+				cmdStr = 'cd %s && %s'%(workDir,postcommand)
 				logInfo('Executing post command: {}'.format(postcommand))
 				proc = subprocess.Popen(cmdStr, shell=True)
 				proc.wait()
@@ -608,12 +606,12 @@ if(__name__ == "__main__"):
 	# Keep master thread alive and check to see if all threads are done
 	while True:
 		time.sleep(1)
-		allAlive = True
+		stillRunning = False
 		for thread in threads:
-			if not thread.isAlive():
-				allAlive = False
+			if thread.isAlive():
+				stillRunning = True
 
-		if(not allAlive):
+		if(not stillRunning):
 			break
 
 	# Construct PBS submission script

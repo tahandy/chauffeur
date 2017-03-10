@@ -1,0 +1,9 @@
+driver:
+  execcommand: "echo %(thread) sleeping for %(sleeptime) seconds && sleep %(sleeptime)"
+  postcommand: "echo %(thread) done!"
+  nthreads: 4
+  
+run:
+  variables:
+    sleeptime: [1,5,10,20,25]
+    
