@@ -573,7 +573,6 @@ if(__name__ == "__main__"):
 		initUserData(cfg)
 		# Initialize file configurations
 		initFileData(cfg)
-		print('fileData: ',fileData)
 		# Initialize run configurations
 		initRunData(cfg)
 
