@@ -4,6 +4,27 @@
 **Chauffeur** supports parameterization at all levels of the driver process. Autogenerate directories and input files, dynamically select executables, and perform pre-and post-execution tasks.
 
 ---
+#Table of Contents
+
+  * [Chauffeur](#chauffeur)
+  * [Requirements](#requirements)
+  * [Usage](#usage)
+  * [Execution flow](#execution-flow)
+  * [Parameterization](#parameterization)
+    * [YAML input structure](#yaml-input-structure)
+    * [Inline formatting](#inline-formatting)
+    * [Expressions](#expressions)
+    * [Example](#example)
+    * [Driver](#driver)
+      * [Modifiable parameters:](#modifiable-parameters)
+      * [Static parameters:](#static-parameters)
+    * [File\*](#file)
+      * [Modifiable parameters:](#modifiable-parameters-1)
+    * [Run\*](#run)
+      * [Modifiable parameters:](#modifiable-parameters-2)
+    * [Userdef](#userdef)
+
+---
 # Requirements
 - [Python 3.4+](http://www.python.org)
 - [PyYAML](http://www.pyyaml.org/)
@@ -61,7 +82,7 @@ The input file that drives **chauffeur** uses the YAML format and is divided int
 
 ```yaml
 num: 7
-squared: "\`pow(%(num),2)\`"
+squared: "`pow(%(num),2)`"
 ```
 
 ## Example
@@ -72,12 +93,12 @@ Input:<br />
 driver:
   execcommand: "echo %(num) %(times10) %(squared)"
 userdef:
-  times10: "\`%(num)*10\`"
+  times10: "`%(num)*10`"
 run:
   variables:
     num: [1,2,3,10,11,37,72]
   parameters:
-    squared: "\`pow(%(num),2)\`"
+    squared: "`pow(%(num),2)`"
 ```
 
 Output:<br />
@@ -181,7 +202,7 @@ Description: Specify additional parameters related to this file. Parameters shou
 
 ---
 ## Run\*
-The ```run``` directive is used to specify parameter space variables which specify the tasks to execute.
+The ```run``` directive is used to specify parameter space variables which specify the tasks to execute. Runs are executed in lexacographical order (e.g. ```run_01``` will be performed before ```run_10```).
 
 ### Modifiable parameters:
 
@@ -208,4 +229,4 @@ Description: Specify additional parameters related to this task. Parameters shou
 The ```userdef``` directive is used to specify parameters which are not directly tied to any task or file. Examples include mathematical expressions that may involve task/file-level parameters, instance-specific identifiers, etc. User defined parameters should be defined as subdirectives.
 >userdef:<br />
 >&nbsp;&nbsp;&nbsp;&nbsp;pi: 3.14159265<br />
->&nbsp;&nbsp;&nbsp;&nbsp;twopi: "\`2*%(pi)\`"<br />
+>&nbsp;&nbsp;&nbsp;&nbsp;twopi: "`2*%(pi)`"<br />
