@@ -41,17 +41,14 @@ underlying executable; your executable command may invoke something like MPI
 to further parallelize the run. For example, you may execute 3 runs in
 task-wise parallel, each using a number of MPI cores.
 
-Additionally, **chauffeur** may be used to setup the directory structures and
-generate submission files for job management systems like PBS/Torque.
+Additionally, **chauffeur** may be used to setup the directory structures and generate submission files for job management systems like PBS/Torque.
 
 ---
 # Parameterization
 
 **Chauffeur** operates by parameterizing most aspects of the automation process. Accessing defined parameters is obtained by enclosing the parameter name in '%(...)'. For example, if `var1` is defined (see below), access to this parameter is achieved by using `%(var1)`.
 
-**Chauffeur** supports the use of inline formatting to specify the output format of an evaluated parameter. This inline formatting is based on the equivalent formats for Python 3's `format` statement. For example, if `var1` is an integer, we can format it to print as a width=4 integer with leading zeros using `%(var1:04d)`, where the `:` denotes the beginning of inline formatting and `04d` is the format specifier.
-
-# YAML input structure
+## YAML input structure
 
 The input file that drives **chauffeur** uses the YAML format and is divided into multiple (potentially optional) sections: *driver*, *userdef*, *file\**, and *run\**.
 
@@ -60,119 +57,142 @@ The input file that drives **chauffeur** uses the YAML format and is divided int
 - *file\** sections define text files which should undergo parameter replacement (optional)
 - *run\** sections define the parameter space
 
-## Driver
-The driver section is specified by the top-level identifier `driver:`. The available options are:
+## Inline formatting
+**Chauffeur** supports the use of inline formatting to specify the output format of an evaluated parameter. This inline formatting is based on the equivalent formats for Python 3's `format` statement. For example, if `var1` is an integer, we can format it to print as a width=4 integer with leading zeros using `%(var1:04d)`, where the `:` denotes the beginning of inline formatting and `04d` is the format specifier.
 
-Modifiable parameters:
-`rundir     `                  = '%(cwd)'
-`templatedir`                       = None
-`type       `                = 'exec'
-`dryrun     `                  = True
-`skipifexist`                       = True
-`nthreads   `                     = 1
+## Expressions
+**Chauffeur** includes support for expressions, which are custom combinations of (primarily) numeric parameters. Expressions are enclosed in backticks (\`) and are recursively fed to ```eval```. Parameters including expressions must be enclosed in double quotes (").
 
+> num: 7<br />
+> squared: "\`pow(%(num),2)\`"
 
-
-Fix parameters:
-`cwd        `               = os.getcwd()
-`scriptdir  `                     = os.path.realpath(__file__)
-`rundir     `                  = '%(cwd)'
-`templatedir`                       = None
-`type       `                = 'exec'
-`dryrun     `                  = True
-`skipifexist`                       = True
-`nthreads   `                     = 1
-
-  driverData['precommand']    = None
-  driverData['execcommand']   = None
-  driverData['postcommand']   = None
-
-  # PBS stuff
-  driverData['pbs_submitscript'] = '%(cwd)/pbs_submit.sh'
-  driverData['pbs_subcommand']   = 'qsub'
-
-
-# Examples
-
-## Parameter file
-> ... static input ...
-
-> thisisvarA = %(a)
-
-> thisisvarB = %(b)
-
-> thisisparamC = %(c)
-
-> ... static input ...
-
-
-## Multiple sequential runs in one directory
-```yaml
-driver:
-    rundir: "./"
-    executable: "a.exe"
-    templatefile: "input_template"
-    paramfile: "%(rundir)/input"
-
-run1:
-  variableorder: [a,b]
-  variables:
-    b: [1,2]
-    a: [4,5]
-  parameters:
-    c: 1.0
+## Example
+A simple input file which echoes parameters is:
 ```
-
-## Multiple MPI runs simultaneously
-```yaml
 driver:
-    rundir: "%(basedir)/%(thread)"
-    templatedir: "%(basedir)/template"
-    executable: "a.exe"
-    templatefile: "%(templatedir)/input_template"
-    paramfile: "%(rundir)/input"
-    execcommand: "mpirun -np 2 %(executable) > runlog"
-
-usedef:
-  basedir: "/tmp/mybasedir"
-
-run1:
-  variableorder: [a,b]
-  variables:
-    b: [1,2]
-    a: [4,5]
-  parameters:
-    c: 1.0
-```
-
-## Multiple MPI runs simultaneously with parameter-based run directories and custom formatting
-```yaml
-driver:
-    rundir: "%(basedir)/vara_%(a:%02d)_varb_%(b:%4e)"
-    templatedir: "%(basedir)/template"
-    executable: "a.exe"
-    templatefile: "%(templatedir)/input_template_%(c)"
-    paramfile: "%(rundir)/input"
-    execcommand: "mpirun -np %(nproc:%d) %(executable) > runlog"
-
+  execcommand: "echo %(num) %(times10) %(squared)"
 userdef:
-  basedir: "/tmp/mybasedir"
-
-run1:
-  variableorder: [a,b]
+  times10: "\`%(num)*10\`"
+run:
   variables:
-    b: [1,2]
-    a: [1.569,3.14]
+    num: [1,2,3,10,11,37,72]
   parameters:
-    c: "superbee"
-    nproc: 7
-
-run2:
-  variableorder: [a,b]
-  variables:
-    b: [1,2,3,4]
-    a: [0.5, 0.75, 1.0, 2.221]
-  parameters:
-    c: "minmod"
-    nproc: 24
+    squared: "\`pow(%(num),2)\`"
 ```
+
+---
+## Driver
+The ```driver``` directive is used to provide overarching parameters to *chauffeur*.
+
+### Modifiable parameters:
+
+**precommand**<br />
+Default: ```None```<br />
+Description: Set the command to be executed prior to ```execcommand```. Will be executed in ```taskdir```.
+
+**execcommand**<br />
+Default: ```None```<br />
+Description: Set the command to be executed. Will be executed in ```taskdir```.
+
+**postcommand**<br />
+Default: ```None```<br />
+Description: Set the command to be executed after ```execcommand```. Will be executed in ```taskdir```.
+
+**taskdir**<br />
+Default: ```%(cwd)```<br />
+Description: Set the directory a task is executed in. If not task-level parameterized, will reuse the same directory for each task (be careful if threads are used). Default is the directory chauffeur is called from.
+
+**templatedir**<br />
+Default: ```None```<br />
+Description: Set the directory used to initialize task directories.
+
+**type**<br />
+Default: ```exec```<br />
+Options: ```exec```, ```setup```<br />
+Description: Determines how chauffeur is executed. ```exec``` performs all operations, including running **execcommand**. ```setup``` only initializes run directories, and also produces PBS submission script.
+
+**skipifexist**<br />
+Default: ```True```<br />
+Options: ```True```, ```False```<br />
+Description: If true, skips a task if the ```taskdir``` assigned to it exists.
+
+**nthreads**<br />
+Default: ```1```<br />
+Description: Sets the number of parallel tasks to execute at once. Separate from execution parallelism.
+
+**pbs_submitscript**<br />
+Default: ```%(cwd)/pbs_submit.sh```<br />
+Description: Sets the location of the PBS submission script. This script executes the commands to submit jobs to the scheduler. Job submission script must be handled in *file\** directives.
+
+**pbs_subcommand**<br />
+Default: ```qsub```<br />
+Description: Sets the job scheduler submission command.
+
+**nthreads**<br />
+Default: ```1```<br />
+Description: Sets the number of parallel tasks to execute at once. Separate from execution parallelism.
+
+###Static parameters:
+
+**cwd**<br />
+Value: ```os.getcwd()```<br />
+Description: Directory where chauffeur is executed in.
+
+**scriptdir**<br />
+Value: ```os.path.realpath(__file__)```<br />
+Description: Directory where chauffeur lives.
+
+
+## File\*
+The ```file``` directive is used to specify files which should be processed. This may be used multiple times in the input. These are detected by searching for top-level directives which contain ```file```. When including multiple files, you must append unique suffices to ```file``` (e.g. ```file_1``` & ```file_2```).
+
+### Modifiable parameters:
+
+**input**<br />
+Default: ```None```<br />
+Description: Specify input file to be processed. Required if ```file``` directive is used.
+
+**output**<br />
+Default: ```None```<br />
+Description: Specify resulting output file. Required if ```file``` directive is used.
+
+**type**<br />
+Default: ```None```<br />
+Options: ```None```, ```pbs```<br />
+Description: Specify type of file. If set to ```pbs```, this file will be used as the job scheduler submission script.
+
+**parameters**<br />
+Default: ```None```<br />
+Description: Specify additional parameters related to this file. Parameters should be defined as subdirectives<br />
+>parameters:<br />
+>&nbsp;&nbsp;&nbsp;&nbsp;param1: "foo"<br />
+>&nbsp;&nbsp;&nbsp;&nbsp;param2: "bar"<br />
+
+## Run\*
+The ```run``` directive is used to specify parameter space variables which specify the tasks to execute.
+
+### Modifiable parameters:
+
+**variables**<br />
+Default: ```MUST BE DEFINED```<br />
+Description: Specify the values of the parameter space to be combined. Individual variables should be defined as subdirectives.<br />
+>variables:<br />
+>&nbsp;&nbsp;&nbsp;&nbsp;var1: [1,2,3]<br />
+>&nbsp;&nbsp;&nbsp;&nbsp;var2: ["foo","bar"]<br />
+
+**variableorder**<br />
+Default: ```None```<br />
+Description: Specify the order that variables should be evaluated in the tensor product. Value should be a list containing the variable names, in order of fastest to slowest varying. By default, variables will be evaluated in lexicographical order.
+
+**parameters**<br />
+Default: ```None```<br />
+Description: Specify additional parameters related to this task. Parameters should be defined as subdirectives<br />
+>parameters:<br />
+>&nbsp;&nbsp;&nbsp;&nbsp;param1: "foo"<br />
+>&nbsp;&nbsp;&nbsp;&nbsp;param2: "bar"<br />
+
+## Userdef\*
+The ```userdef``` directive is used to specify parameters which are not directly tied to any task or file. Examples include mathematical expressions that may involve task/file-level parameters, instance-specific identifiers, etc. User defined parameters should be defined as subdirectives.
+>userdef:<br />
+>&nbsp;&nbsp;&nbsp;&nbsp;pi: 3.14159265<br />
+>&nbsp;&nbsp;&nbsp;&nbsp;twopi: "\`2*%(pi)\`"<br />

@@ -1,9 +1,8 @@
 driver:
   rundir: "%(cwd)"
   execcommand: "./isprime.py %(numtotest)"
-#  skipifexist: False
 
 run:
   variables:
     numtotest: [1,2,3,10,11,37,72]
-    
+

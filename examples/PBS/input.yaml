@@ -4,7 +4,7 @@ driver:
   precommand: "echo \"Before exec\""
   postcommand: "./PostProc.pl -n %(nproc)"
   type: setup
-  
+
 file_param:
   input: "PARAM.in_template"
   output: "%(rundir)/PARAM.in"
@@ -21,7 +21,7 @@ file_pbs:
 userdef:
   nproc: "`%(nodes)*%(ppn)`"
 
-run:
+run_1:
   variables:
     a: [1,2,3]
   parameters:
@@ -29,4 +29,13 @@ run:
     nodes: 6
     ppn: 20
     walltime: "8:00:00"
-    
+
+run_2:
+  variables:
+    a: [4,5,6]
+  parameters:
+    runname: "pbs_a%(a)"
+    nodes: 8
+    ppn: 20
+    walltime: "12:00:00"
+
